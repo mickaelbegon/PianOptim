@@ -131,6 +131,16 @@ def prepare_ocp(allDOF, pressed, ode_solver) -> OptimalControlProgram:
         BiorbdModel(biorbd_model_path),
     )
 
+    if pressed:
+        # Velocity profile found thanks to the motion capture datas.
+        vel_push_array = [0.0, -0.114, -0.181, -0.270, -0.347, -0.291, -0.100, ]
+        n_shooting = (30, 7, 9, 10, 10)
+        phase_time = (0.3, 0.044, 0.051, 0.15, 0.15)
+    else:
+        vel_push_array = [-0.698, -0.475, -0.368, -0.357, -0.368, -0.278, ]
+        n_shooting = (30, 6, 9, 10, 10)
+        phase_time = (0.3, 0.027, 0.058, 0.15, 0.15)
+
     # Dynamics
     dynamics = DynamicsList()
     dynamics.add(DynamicsFcn.TORQUE_DRIVEN, phase=0)
@@ -138,11 +148,6 @@ def prepare_ocp(allDOF, pressed, ode_solver) -> OptimalControlProgram:
     dynamics.add(DynamicsFcn.TORQUE_DRIVEN, with_contact=True, phase=2)
     dynamics.add(DynamicsFcn.TORQUE_DRIVEN, phase=3)
     dynamics.add(DynamicsFcn.TORQUE_DRIVEN, phase=4)
-
-    # Average of N frames by phase ; Average of phases time ; both measured with the motion capture datas.
-    n_shooting = (30, 7, 9, 17, 18)
-    phase_time = (0.3, 0.044, 0.051, 0.17, 0.18)
-    tau_min, tau_max, tau_init = -200, 200, 0
 
     # Objectives
     # Minimize Torques generated into articulations
@@ -165,37 +170,42 @@ def prepare_ocp(allDOF, pressed, ode_solver) -> OptimalControlProgram:
 
     # Constraints
     constraints = ConstraintList()
+    if pressed:
+        constraints.add(
+            ConstraintFcn.SUPERIMPOSE_MARKERS,
+            phase=0, node=Node.ALL,
+            first_marker="finger_marker",
+            second_marker="high_square",
+        )
+    else:
+        constraints.add(
+            ConstraintFcn.SUPERIMPOSE_MARKERS,
+            phase=0, node=Node.START,
+            first_marker="finger_marker",
+            second_marker="high_square",
+        )
+        constraints.add(
+            ConstraintFcn.SUPERIMPOSE_MARKERS,
+            phase=0, node=Node.END,
+            first_marker="finger_marker",
+            second_marker="high_square",
+        )
 
-    constraints.add(
-        ConstraintFcn.SUPERIMPOSE_MARKERS,
-        phase=0,
-        node=Node.ALL,
-        first_marker="finger_marker",
-        second_marker="high_square",
-    )
-
-    # Velocity profile found thanks to the motion capture datas.
-    vel_push_array2 = [
-        [-0.114, -0.181, -0.270, -0.347, -0.291, -0.100,]  # MB: remove first and last
-    ]
-
-    # No finger's tip velocity at the start of phase 1
+    #Stricly constrained velocity at start
     constraints.add(
         ConstraintFcn.TRACK_MARKERS_VELOCITY,
-        phase=1,
-        node=Node.START,
-        marker_index=4,
+        phase=1, node=Node.START,
+        marker_index=4, axes=None if pressed else Axis.Z, #none means all
+        target=vel_push_array[0]
     )
 
-    constraints.add(
-        ConstraintFcn.TRACK_MARKERS_VELOCITY,
-        phase=1,
-        node=Node.INTERMEDIATES,
-        target=vel_push_array2,
-        marker_index=4,
-        min_bound=-0.01,
-        max_bound=0.01,
-    )
+    # constraints.add(
+    #     ConstraintFcn.TRACK_MARKERS_VELOCITY,
+    #     phase=1, node=Node.INTERMEDIATES,
+    #     marker_index=4, axes=Axis.Z,
+    #     min_bound=-0.01, max_bound=0.01,
+    #     target=vel_push_array[1:],
+    # )
 
     # No finger's tip velocity at the end of phase 1
     constraints.add(
@@ -328,6 +338,7 @@ def prepare_ocp(allDOF, pressed, ode_solver) -> OptimalControlProgram:
         x_bounds[4]["q"][[2], 2] = 0.1
 
     # Define control path constraint and initial guess
+    tau_min, tau_max, tau_init = -100, 100, 0
     u_bounds = BoundsList()
     u_init = InitialGuessList()
     for phase in all_phases:
