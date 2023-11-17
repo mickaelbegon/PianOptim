@@ -199,13 +199,14 @@ def prepare_ocp(allDOF, pressed, ode_solver) -> OptimalControlProgram:
         target=vel_push_array[0]
     )
 
-    # constraints.add(
-    #     ConstraintFcn.TRACK_MARKERS_VELOCITY,
-    #     phase=1, node=Node.INTERMEDIATES,
-    #     marker_index=4, axes=Axis.Z,
-    #     min_bound=-0.01, max_bound=0.01,
-    #     target=vel_push_array[1:],
-    # )
+    for node in range(1, len(vel_push_array)): #todo: use Node.INTERMEDIATES
+        constraints.add(
+            ConstraintFcn.TRACK_MARKERS_VELOCITY,
+            phase=1, node=node,
+            marker_index=4, axes=Axis.Z,
+            min_bound=-0.01, max_bound=0.01,
+            target=vel_push_array[node],
+        )
 
     # No finger's tip velocity at the end of phase 1
     constraints.add(
@@ -372,14 +373,14 @@ def main():
     """
     print(os.getcwd())
     polynomial_degree = 4
-    allDOF = True
+    allDOF = False
     pressed = True #False means Struck
-
+    dirName = "/Users/mickaelbegon/Library/CloudStorage/Dropbox/1_EN_COURS/FALL2023/"
     if allDOF:
-        saveName = "/Users/mickaelbegon/Library/CloudStorage/Dropbox/1_EN_COURS/FALL2023/Pressed_with_Thorax.pckl"
+        saveName = dirName + ("Pressed" if pressed else "Struck") + "_with_Thorax.pckl"
         nq = 10
     else:
-        saveName = "/Users/mickaelbegon/Library/CloudStorage/Dropbox/1_EN_COURS/FALL2023/Pressed_without_Thorax.pckl"
+        saveName = dirName + ("Pressed" if pressed else "Struck") +  "_without_Thorax.pckl"
         nq = 7
 
     ocp = prepare_ocp(allDOF=allDOF, pressed=pressed, ode_solver=OdeSolver.COLLOCATION(polynomial_degree=polynomial_degree))
