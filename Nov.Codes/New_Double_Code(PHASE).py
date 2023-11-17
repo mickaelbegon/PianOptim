@@ -9,13 +9,15 @@ from scipy.interpolate import interp1d
 def degrees(radians):
     return np.degrees(radians)
 
+dirName = "/Users/mickaelbegon/Library/CloudStorage/Dropbox/1_EN_COURS/FALL2023/"
+typeTouch = "Struck" #"Pressed" #
 
 # Load data_1
-with open("/Users/mickaelbegon/Library/CloudStorage/Dropbox/1_EN_COURS/FALL2023/Pressed_with_Thorax.pckl",
+with open(dirName + typeTouch + "_with_Thorax.pckl",
           "rb") as file:
     data_1 = pickle.load(file)
 
-with open("/Users/mickaelbegon/Library/CloudStorage/Dropbox/1_EN_COURS/FALL2023/Pressed_without_Thorax.pckl",
+with open(dirName + typeTouch + "_without_Thorax.pckl",
           "rb") as file:
     data_2 = pickle.load(file)
 
@@ -157,6 +159,12 @@ for i in range(-7, 0):
             ax.axvline(x=point, color="k", linestyle=":")
 
     plt.tight_layout()
+
+I1 = (np.trapz(concatenated_array_tau_s_1[-1, :]**2, x=concatenated_array_time_s_1) +
+      np.trapz(concatenated_array_tau_s_1[-2, :]**2, x=concatenated_array_time_s_1))
+I2 = (np.trapz(concatenated_array_tau_s_2[-1, :]**2, x=concatenated_array_time_s_2) +
+      np.trapz(concatenated_array_tau_s_2[-2, :]**2, x=concatenated_array_time_s_2))
+print(I1, I2, (I1-I2)/I1*100)
 
 plt.show()
 
